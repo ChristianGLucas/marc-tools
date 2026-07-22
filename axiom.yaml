@@ -1,0 +1,33 @@
+name: christiangeorgelucas/marc-tools
+version: 0.1.0
+language: python
+description: Deterministic MARC21/UNIMARC library-catalog record parsing, serialization, structural validation, and bibliographic-entity extraction, wrapping the BSD-2-Clause pymarc library (zero transitive dependencies). A single canonical MarcRecord envelope (leader + ordered fields, each control-field-or-indicators+subfields) flows through parse/serialize across binary MARC21 (ISO 2709), MARCXML, and MARC-in-JSON, plus standalone leader decoding, MARC21-tag bibliographic extraction (title/author/ISBN/ISSN/publisher/subjects/series/notes), structural validation, legacy MARC-8-to-Unicode conversion, and a human-readable staff-view text rendering. Stateless, offline, no external service, with hard size/count bounds on untrusted input and structured errors instead of crashes.
+nodes:
+    - name: ParseMarc
+      input: ParseMarcInput
+      output: ParseMarcOutput
+      description: Parse one or more MARC bibliographic/authority/holdings records from binary MARC21 (ISO 2709), MARCXML, or MARC-in-JSON into the package's canonical MarcRecord envelope (leader + ordered fields, each either a control field with a flat value or a field with two indicators and coded subfields). The binary and JSON readers are ISO-2709-structural, so they parse UNIMARC records equally well; MARCXML parsing works on any document using the standard MARCXML container schema (record/leader/controlfield/datafield/subfield) regardless of tag vocabulary. Malformed input, an unrecognized format, or input over 10 MB / 5000 records returns a structured error instead of a crash.
+    - name: SerializeMarc
+      input: SerializeMarcInput
+      output: SerializeMarcOutput
+      description: Render one or more canonical MarcRecord envelopes back into binary MARC21 (ISO 2709), MARCXML, or MARC-in-JSON bytes. Round-trips a record parsed by ParseMarc back into the same wire format losslessly for well-formed input. Records beyond the 5000-record cap are dropped; an empty records list or an unrecognized format returns a structured error instead of a crash.
+    - name: ParseLeader
+      input: ParseLeaderInput
+      output: LeaderFields
+      description: Decode a raw 24-character MARC leader string into its fixed-position structural fields (record length, record status, type of record, bibliographic level, encoding scheme, indicator/subfield-code counts, base address of data, encoding level, cataloging form, multipart-resource level). The leader's physical layout is shared by MARC21 and UNIMARC binary records, so this works for either. A leader that is not exactly 24 characters, or has a non-numeric record-length/base-address, returns a structured error instead of a crash.
+    - name: ExtractBibliographicEntities
+      input: ExtractBibliographicEntitiesInput
+      output: BibliographicEntities
+      description: Extract higher-level bibliographic entities from a MarcRecord using standard MARC21 tag conventions — title (245), uniform title (130/240), main/added-entry authors (100/110/111/700/710/711), ISBN (020), ISSN and ISSN-L (022), publisher and publication year (260/264), subjects (6xx), series (4xx/8xx), notes (5xx), physical description (300), and SuDoc number. A field a record does not carry comes back as an empty string or empty list, never an error — extraction is best-effort over whatever tags are present.
+    - name: ValidateMarcRecord
+      input: ValidateMarcRecordInput
+      output: ValidateMarcRecordOutput
+      description: Structurally validate one or more MARC records in binary MARC21, MARCXML, or MARC-in-JSON without needing them pre-parsed — checks the 24-byte leader, the directory's byte-offset consistency, and record-length/base-address bounds (binary), or that the document/records parse into at least one well-formed record (MARCXML/JSON). Returns valid=false with one structured error message per problem found rather than raising; a well-formed empty document is valid with record_count 0.
+    - name: ConvertMarc8ToUnicode
+      input: ConvertMarc8Input
+      output: ConvertMarc8Output
+      description: Convert raw MARC-8 (ANSI/NISO Z39.47) encoded bytes — the legacy character encoding many older binary MARC21 records still use for non-Latin scripts, diacritics, and special characters — to Unicode text, independent of a full record parse. Useful when a MARC-8 byte sequence has been extracted elsewhere (e.g. from a RawField) and needs decoding on its own. Bounded to 1 MB of input; malformed multibyte sequences return a structured error instead of crashing.
+    - name: FormatMarcText
+      input: FormatMarcTextInput
+      output: FormatMarcTextOutput
+      description: Render a MarcRecord as a human-readable "staff view" — one line per field in MARCMaker-style notation (=LDR, =245  10$aTitle ...), the same format ILS staff interfaces commonly show catalogers. Deterministic field order matches the record's own field order.

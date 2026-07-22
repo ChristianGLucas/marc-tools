@@ -1,0 +1,175 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+
+syntax = "proto3";
+
+package christiangeorgelucas.marc_tools;
+
+// MarcFormat selects which MARC serialization a node reads or writes.
+// The same enum is shared by every parse/serialize/validate node so a
+// flow author sets the format once per edge, not per node.
+enum MarcFormat {
+  MARC_FORMAT_UNSPECIFIED = 0;
+  // Binary MARC21 / ISO 2709 transmission format (.mrc files).
+  MARC_FORMAT_MARC21 = 1;
+  // MARCXML (Library of Congress MARC21slim / MARCXML schema).
+  MARC_FORMAT_MARCXML = 2;
+  // MARC-in-JSON (Library of Congress community JSON representation).
+  MARC_FORMAT_MARC_IN_JSON = 3;
+}
+
+// One subfield of a non-control MARC field: a single-character code
+// (e.g. "a", "b") and its text value.
+message Subfield {
+  string code = 1;
+  string value = 2;
+}
+
+// One MARC field. Control fields (tag "001"-"009") carry a flat
+// control_value and no indicators/subfields; all other fields carry
+// two indicators plus a repeated list of subfields.
+message Field {
+  string tag = 1;
+  bool is_control_field = 2;
+  string control_value = 3;
+  string indicator1 = 4;
+  string indicator2 = 5;
+  repeated Subfield subfields = 6;
+}
+
+// The package's single canonical envelope: one bibliographic (or
+// authority/holdings) MARC record — a 24-character leader plus its
+// ordered list of fields — independent of which wire format it was
+// parsed from or will be serialized to. Every parse node emits this;
+// every serialize node consumes it.
+message MarcRecord {
+  string leader = 1;
+  repeated Field fields = 2;
+}
+
+// Input for ParseMarc: raw record bytes in one of the three supported
+// formats, plus which format they're in.
+message ParseMarcInput {
+  bytes data = 1;
+  MarcFormat format = 2;
+}
+
+message ParseMarcOutput {
+  repeated MarcRecord records = 1;
+  int32 count = 2;
+  bool error = 3;
+  string error_message = 4;
+}
+
+// Input for SerializeMarc: one or more canonical records plus the
+// target wire format to render them into.
+message SerializeMarcInput {
+  repeated MarcRecord records = 1;
+  MarcFormat format = 2;
+}
+
+message SerializeMarcOutput {
+  bytes data = 1;
+  bool error = 2;
+  string error_message = 3;
+}
+
+message ParseLeaderInput {
+  string leader = 1;
+}
+
+// The structural decode of a MARC leader's 24 fixed-position fields
+// (MARC21 leader positions 00-23; the same physical layout is shared
+// by MARC21 and UNIMARC binary/ISO-2709 records).
+message LeaderFields {
+  int32 record_length = 1;
+  string record_status = 2;
+  string type_of_record = 3;
+  string bibliographic_level = 4;
+  string type_of_control = 5;
+  string character_coding_scheme = 6;
+  int32 indicator_count = 7;
+  int32 subfield_code_count = 8;
+  int32 base_address_of_data = 9;
+  string encoding_level = 10;
+  string descriptive_cataloging_form = 11;
+  string multipart_resource_record_level = 12;
+  bool error = 13;
+  string error_message = 14;
+}
+
+message ExtractBibliographicEntitiesInput {
+  MarcRecord record = 1;
+}
+
+// Higher-level bibliographic entities extracted from a MARC21-tagged
+// record's fields (title 245, main entry 100/110/111, ISBN 020, ISSN
+// 022/022L, publisher/date 260/264, subjects 6xx, series 4xx/8xx,
+// notes 5xx, physical description 300, uniform title 130/240).
+message BibliographicEntities {
+  string title = 1;
+  string uniform_title = 2;
+  repeated string authors = 3;
+  string isbn = 4;
+  string issn = 5;
+  string issnl = 6;
+  string publisher = 7;
+  string pub_year = 8;
+  repeated string subjects = 9;
+  repeated string series = 10;
+  repeated string notes = 11;
+  repeated string physical_description = 12;
+  string sudoc = 13;
+}
+
+message ValidateMarcRecordInput {
+  bytes data = 1;
+  MarcFormat format = 2;
+}
+
+message ValidateMarcRecordOutput {
+  bool valid = 1;
+  repeated string errors = 2;
+  int32 record_count = 3;
+}
+
+// Input for ConvertMarc8ToUnicode: raw MARC-8-encoded bytes (the legacy
+// ANSI/NISO Z39.47 encoding many older binary MARC21 records still use
+// for non-Latin scripts and diacritics), independent of a full record
+// parse. MARC-8 is a byte-oriented encoding with escape-sequence
+// charset switches, not a UTF-8/ASCII-compatible text encoding, so
+// this is bytes rather than string.
+message ConvertMarc8Input {
+  bytes marc8_data = 1;
+  bool hide_warnings = 2;
+}
+
+message ConvertMarc8Output {
+  string unicode_text = 1;
+  bool error = 2;
+  string error_message = 3;
+}
+
+message FormatMarcTextInput {
+  MarcRecord record = 1;
+}
+
+// A human-readable "staff view" rendering of a record, one line per
+// field in MARCMaker-style notation (=245  10$aTitle ...).
+message FormatMarcTextOutput {
+  string text = 1;
+}
