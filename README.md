@@ -1,6 +1,6 @@
 # marc-tools
 
-Composable [Axiom](https://axiom.co) nodes for **MARC bibliographic /
+Composable [Axiom](https://axiomide.com) nodes for **MARC bibliographic /
 library-catalog records** — parsing, serializing, validating, and extracting
 higher-level bibliographic entities from MARC21 and UNIMARC records, in
 binary MARC (ISO 2709), MARCXML, or MARC-in-JSON.
