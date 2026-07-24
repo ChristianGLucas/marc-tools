@@ -113,10 +113,12 @@ def test_parse_marc_unspecified_format_returns_structured_error(ax):
     assert "format" in result.error_message.lower()
 
 
-def test_parse_marc21_oversized_input_returns_structured_error(ax):
-    from nodes.marc_common import MAX_INPUT_BYTES
-
-    oversized = b"0" * (MAX_INPUT_BYTES + 1)
-    result = parse_marc(ax, ParseMarcInput(data=oversized, format=MarcFormat.MARC_FORMAT_MARC21))
+def test_parse_marc21_large_malformed_input_does_not_crash(ax):
+    # No payload-size limit is imposed by this node -- the platform bounds
+    # that, not the node. A large, malformed (not real MARC21) input still
+    # surfaces as a structured error rather than an unhandled crash.
+    large = b"0" * 2_000_001
+    result = parse_marc(ax, ParseMarcInput(data=large, format=MarcFormat.MARC_FORMAT_MARC21))
     assert result.error is True
-    assert "byte limit" in result.error_message
+    assert result.error_message
+    assert result.count == 0

@@ -1,5 +1,5 @@
 from gen.messages_pb2 import ConvertMarc8Input
-from nodes.convert_marc8_to_unicode import MAX_MARC8_BYTES, convert_marc8_to_unicode
+from nodes.convert_marc8_to_unicode import convert_marc8_to_unicode
 
 
 def test_convert_marc8_grave_accent_matches_loc_ansel_table(ax):
@@ -30,8 +30,11 @@ def test_convert_marc8_empty_input_is_empty_string(ax):
     assert result.unicode_text == ""
 
 
-def test_convert_marc8_oversized_input_returns_structured_error(ax):
-    oversized = b"a" * (MAX_MARC8_BYTES + 1)
-    result = convert_marc8_to_unicode(ax, ConvertMarc8Input(marc8_data=oversized))
-    assert result.error is True
-    assert "byte limit" in result.error_message
+def test_convert_marc8_large_input_does_not_crash(ax):
+    # No payload-size limit is imposed by this node -- the platform bounds
+    # that, not the node. A large but well-formed ASCII input converts
+    # cleanly.
+    large = b"a" * 2_000_001
+    result = convert_marc8_to_unicode(ax, ConvertMarc8Input(marc8_data=large))
+    assert result.error is False
+    assert result.unicode_text == "a" * 2_000_001

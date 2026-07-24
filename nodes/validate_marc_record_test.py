@@ -72,12 +72,13 @@ def test_validate_malformed_marcxml_is_invalid(ax):
     assert len(result.errors) >= 1
 
 
-def test_validate_oversized_input_is_invalid(ax):
-    from nodes.marc_common import MAX_INPUT_BYTES
-
-    oversized = b"0" * (MAX_INPUT_BYTES + 1)
+def test_validate_large_malformed_input_does_not_crash(ax):
+    # No payload-size limit is imposed by this node -- the platform bounds
+    # that, not the node. A large, malformed (not real MARC21) input still
+    # surfaces as valid=false with a structured error, not a crash.
+    large = b"0" * 2_000_001
     result = validate_marc_record(
-        ax, ValidateMarcRecordInput(data=oversized, format=MarcFormat.MARC_FORMAT_MARC21)
+        ax, ValidateMarcRecordInput(data=large, format=MarcFormat.MARC_FORMAT_MARC21)
     )
     assert result.valid is False
-    assert "byte limit" in result.errors[0]
+    assert len(result.errors) >= 1

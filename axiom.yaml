@@ -1,5 +1,5 @@
 name: christiangeorgelucas/marc-tools
-version: 0.1.0
+version: 0.1.1
 language: python
 description: Deterministic MARC21/UNIMARC library-catalog record parsing, serialization, structural validation, and bibliographic-entity extraction, wrapping the BSD-2-Clause pymarc library (zero transitive dependencies). A single canonical MarcRecord envelope (leader + ordered fields, each control-field-or-indicators+subfields) flows through parse/serialize across binary MARC21 (ISO 2709), MARCXML, and MARC-in-JSON, plus standalone leader decoding, MARC21-tag bibliographic extraction (title/author/ISBN/ISSN/publisher/subjects/series/notes), structural validation, legacy MARC-8-to-Unicode conversion, and a human-readable staff-view text rendering. Stateless, offline, no external service, with hard size/count bounds on untrusted input and structured errors instead of crashes.
 nodes:

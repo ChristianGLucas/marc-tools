@@ -18,28 +18,14 @@ from gen.messages_pb2 import MarcFormat
 from gen.messages_pb2 import MarcRecord as MarcRecordMsg
 from gen.messages_pb2 import Subfield as SubfieldMsg
 
-# Bounds on untrusted input, enforced before any parse work begins.
-MAX_INPUT_BYTES = 10 * 1024 * 1024  # 10 MB
-MAX_RECORDS = 5000
+# MARC's own spec constant: the leader is always exactly 24 characters
+# (ISO 2709 / MARC 21 format). Payload/count limits are the platform's
+# job, not this package's -- no byte-size or record-count cap lives here.
 LEADER_LEN = 24
 
 
 class MarcToolsError(Exception):
     """Raised for any structured, caller-facing error condition."""
-
-
-def check_input_size(data: bytes) -> None:
-    if len(data) > MAX_INPUT_BYTES:
-        raise MarcToolsError(
-            f"input exceeds the {MAX_INPUT_BYTES}-byte limit ({len(data)} bytes)"
-        )
-
-
-def check_record_count(records: list) -> None:
-    if len(records) > MAX_RECORDS:
-        raise MarcToolsError(
-            f"input exceeds the {MAX_RECORDS}-record limit ({len(records)} records)"
-        )
 
 
 def pymarc_field_to_message(field: pymarc.Field) -> FieldMsg:
@@ -98,8 +84,6 @@ def parse_records(data: bytes, fmt: int) -> list:
     Always wraps content in an in-memory stream before handing it to a
     pymarc reader -- see the module docstring for why that isn't optional.
     """
-    check_input_size(data)
-
     if fmt == MarcFormat.MARC_FORMAT_MARC21:
         reader = pymarc.MARCReader(io.BytesIO(data), to_unicode=True)
         records = []
@@ -111,7 +95,6 @@ def parse_records(data: bytes, fmt: int) -> list:
             records.append(record)
         if not records:
             raise MarcToolsError("no MARC21 records found in input")
-        check_record_count(records)
         return records
 
     if fmt == MarcFormat.MARC_FORMAT_MARCXML:
@@ -122,7 +105,6 @@ def parse_records(data: bytes, fmt: int) -> list:
             raise MarcToolsError(f"malformed MARCXML input: {exc}") from exc
         if not records:
             raise MarcToolsError("no MARC records found in MARCXML input")
-        check_record_count(records)
         return records
 
     if fmt == MarcFormat.MARC_FORMAT_MARC_IN_JSON:
@@ -133,7 +115,6 @@ def parse_records(data: bytes, fmt: int) -> list:
             raise MarcToolsError(f"malformed MARC-in-JSON input: {exc}") from exc
         if not records:
             raise MarcToolsError("no MARC records found in MARC-in-JSON input")
-        check_record_count(records)
         return records
 
     raise MarcToolsError(f"unrecognized or unspecified MarcFormat: {fmt}")
@@ -142,7 +123,6 @@ def parse_records(data: bytes, fmt: int) -> list:
 def serialize_records(records: list, fmt: int) -> bytes:
     if not records:
         raise MarcToolsError("no records to serialize")
-    check_record_count(records)
 
     if fmt == MarcFormat.MARC_FORMAT_MARC21:
         return b"".join(record.as_marc() for record in records)
@@ -168,14 +148,9 @@ def serialize_records(records: list, fmt: int) -> bytes:
 
 def _decode_text(data: bytes) -> str:
     try:
-        text = data.decode("utf-8")
+        return data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise MarcToolsError(f"input is not valid UTF-8 text: {exc}") from exc
-    if len(text) > MAX_INPUT_BYTES:
-        raise MarcToolsError(
-            f"input exceeds the {MAX_INPUT_BYTES}-character limit ({len(text)} chars)"
-        )
-    return text
 
 
 def format_field_value(field: pymarc.Field) -> str:

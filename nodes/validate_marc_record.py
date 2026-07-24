@@ -3,7 +3,7 @@ import io
 import pymarc
 from gen.axiom_context import AxiomContext
 from gen.messages_pb2 import MarcFormat, ValidateMarcRecordInput, ValidateMarcRecordOutput
-from nodes.marc_common import MAX_RECORDS, MarcToolsError, check_input_size, parse_records
+from nodes.marc_common import MarcToolsError, parse_records
 
 
 def validate_marc_record(ax: AxiomContext, input: ValidateMarcRecordInput) -> ValidateMarcRecordOutput:
@@ -17,11 +17,6 @@ def validate_marc_record(ax: AxiomContext, input: ValidateMarcRecordInput) -> Va
     """
     data = input.data
     fmt = input.format
-
-    try:
-        check_input_size(data)
-    except MarcToolsError as exc:
-        return ValidateMarcRecordOutput(valid=False, errors=[str(exc)], record_count=0)
 
     if fmt == MarcFormat.MARC_FORMAT_MARC21:
         errors = []
@@ -37,10 +32,6 @@ def validate_marc_record(ax: AxiomContext, input: ValidateMarcRecordInput) -> Va
             errors.append(f"fatal read error: {exc}")
         if record_count == 0 and not errors:
             errors.append("no MARC21 records found in input")
-        if record_count > MAX_RECORDS:
-            errors.append(
-                f"input exceeds the {MAX_RECORDS}-record limit ({record_count} records)"
-            )
         return ValidateMarcRecordOutput(
             valid=(len(errors) == 0), errors=errors, record_count=record_count
         )
